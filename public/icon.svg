@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#15803d" />
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#86efac" />
+      <stop offset="100%" stop-color="#4ade80" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.25" />
+    </filter>
+  </defs>
+  <!-- Background Rounded Squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  
+  <!-- Subtle inner plate glow ring -->
+  <circle cx="256" cy="268" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="12" />
+
+  <!-- Main Plate -->
+  <g filter="url(#shadow)">
+    <circle cx="256" cy="268" r="140" fill="#ffffff" />
+    <circle cx="256" cy="268" r="115" fill="#f8fafc" stroke="#e2e8f0" stroke-width="4" />
+  </g>
+
+  <!-- Nutrition Bowl / Healthy Salad Elements & Leaf -->
+  <!-- Avocado / Healthy Food Silhouette -->
+  <path d="M256,180 C290,180 320,210 320,255 C320,295 292,328 256,328 C220,328 192,295 192,255 C192,210 222,180 256,180 Z" fill="#bbf7d0" />
+  <circle cx="256" cy="268" r="32" fill="#eab308" />
+  <circle cx="256" cy="268" r="22" fill="#ca8a04" />
+
+  <!-- Sprout / Leaf on top -->
+  <path d="M256,180 C256,130 295,115 320,110 C322,135 305,175 256,180 Z" fill="url(#leafGrad)" />
+  <path d="M256,180 C256,135 220,120 200,118 C198,142 215,175 256,180 Z" fill="#4ade80" />
+  
+  <!-- Calorie spark / flame symbol -->
+  <path d="M256,105 C250,90 258,80 262,75 C266,85 275,90 270,102 C268,95 264,92 260,94 C256,96 257,100 256,105 Z" fill="#f97316" />
+</svg>

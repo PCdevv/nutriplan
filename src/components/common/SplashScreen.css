@@ -1,0 +1,192 @@
+/* ==========================================================================
+   NutriPlan — Signature Splash Screen Styling
+   ========================================================================== */
+
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #064e3b 0%, #022c22 60%, #011913 100%);
+  isolation: isolate;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s;
+  user-select: none;
+}
+
+.splash-overlay--fading {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-ambient-bg {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.28) 0%, transparent 70%);
+  filter: blur(50px);
+  animation: splash-float 4s ease-in-out infinite alternate;
+}
+
+.splash-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 24px;
+  z-index: 2;
+  animation: splash-fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.splash-icon-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 28px rgba(34, 197, 94, 0.35));
+  animation: splash-scale 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.splash-pulse-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 36px;
+  border: 2px solid rgba(74, 222, 128, 0.4);
+  animation: splash-pulse 2.2s infinite ease-out;
+}
+
+.splash-brand-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.splash-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.splash-app-name {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: clamp(32px, 7vw, 46px);
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+.splash-sparkle {
+  color: #4ade80;
+  animation: splash-spin 4s linear infinite;
+}
+
+.splash-tagline {
+  margin: 4px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: #86efac;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.splash-subtext {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+/* Skip button */
+.splash-skip-btn {
+  position: absolute;
+  bottom: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 9999px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+  animation: splash-fadeUp 0.6s ease-out 0.8s backwards;
+}
+
+.splash-skip-btn:hover {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: #4ade80;
+  transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes splash-fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-scale {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes splash-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+}
+
+@keyframes splash-float {
+  from { transform: translate(-20px, -15px); }
+  to { transform: translate(20px, 15px); }
+}
+
+@keyframes splash-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
