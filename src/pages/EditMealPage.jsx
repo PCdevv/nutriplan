@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   ArrowLeft,
-  Upload,
+  Link as LinkIcon,
   X,
   Plus,
   Loader,
@@ -11,7 +11,6 @@ import {
   Flame,
 } from 'lucide-react'
 import mealService from '../services/mealService'
-import uploadService from '../services/uploadService'
 import {
   saveDraft,
   loadDraft,
@@ -23,7 +22,7 @@ import {
 import ConfirmModal from '../components/modals/ConfirmModal'
 
 /**
- * EditMealPage — Modify existing meal information.
+ * EditMealPage — Modify existing meal information with link-based image.
  */
 export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
   const targetId = mealId || meal?.id
@@ -42,11 +41,8 @@ export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
     fat: 10,
     serving_size: '1 porsi',
     description: '',
+    image_url: '',
   })
-
-  const [currentImageUrl, setCurrentImageUrl] = useState('')
-  const [imagePreview, setImagePreview] = useState(null)
-  const [uploading, setUploading] = useState(false)
 
   const [ingredients, setIngredients] = useState([{ name: '', quantity: '' }])
 
@@ -79,8 +75,8 @@ export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
             fat: data.fat || 0,
             serving_size: data.serving_size || '1 porsi',
             description: data.description || '',
+            image_url: data.image_url || '',
           })
-          setCurrentImageUrl(data.image_url || '')
           if (data.ingredients && data.ingredients.length > 0) {
             setIngredients(data.ingredients)
           } else {
@@ -103,7 +99,6 @@ export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
     if (draft) {
       if (draft.formData) setFormData(draft.formData)
       if (draft.ingredients) setIngredients(draft.ingredients)
-      if (draft.imagePreview) setImagePreview(draft.imagePreview)
       setShowDraftModal(false)
       setSuccessMsg('Draf tersimpan dipulihkan.')
       setTimeout(() => setSuccessMsg(''), 3000)
@@ -120,7 +115,6 @@ export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
     const draftData = {
       formData,
       ingredients,
-      imagePreview: imagePreview || currentImageUrl,
     }
     const saved = saveDraft(draftData, targetId)
     if (saved) {
@@ -128,33 +122,6 @@ export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
       setDraftTimestamp(ts)
       setSuccessMsg(`Draf disimpan (${formatDraftTime(ts)})`)
       setTimeout(() => setSuccessMsg(''), 3000)
-    }
-  }
-
-  // Image handling
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Ukuran gambar maksimal 5MB.')
-      return
-    }
-
-    setImageFile(file)
-    const localUrl = URL.createObjectURL(file)
-    setImagePreview(localUrl)
-
-    try {
-      setUploading(true)
-      const res = await uploadService.uploadImage(file)
-      if (res.success && res.data?.url) {
-        setCurrentImageUrl(res.data.url)
-      }
-    } catch {
-      setCurrentImageUrl(localUrl)
-    } finally {
-      setUploading(false)
     }
   }
 
@@ -194,7 +161,7 @@ export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
       fat: Number(formData.fat) || 0,
       serving_size: formData.serving_size.trim() || '1 porsi',
       description: formData.description.trim(),
-      image_url: imagePreview || currentImageUrl,
+      image_url: formData.image_url.trim(),
       ingredients: ingredients.filter((ing) => ing.name.trim()),
     }
 
@@ -260,33 +227,85 @@ export default function EditMealPage({ meal, mealId, onBack, onSuccess }) {
       )}
 
       <form onSubmit={handleSubmit} className="entry-form">
-        {/* Photo Section */}
+        {/* Photo URL Section */}
         <div className="card-box">
-          <h2 className="card-box-title">Foto Makanan</h2>
-          <div className="edit-img-wrap">
-            <img
-              src={imagePreview || currentImageUrl}
-              alt="Foto menu"
-              className="edit-current-img"
-            />
-            <div className="edit-img-controls">
+          <h2 className="card-box-title">Link Foto Makanan</h2>
+          <div className="form-group">
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ color: '#64748b' }}><LinkIcon size={18} /></span>
               <input
-                id="edit-meal-photo"
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={handleImageChange}
-                className="hidden-file-input"
+                type="url"
+                value={formData.image_url}
+                onChange={(e) => setFormData((p) => ({ ...p, image_url: e.target.value }))}
+                placeholder="https://images.unsplash.com/... atau URL gambar lainnya"
+                className="form-input"
+                style={{ flex: 1 }}
               />
-              <label htmlFor="edit-meal-photo" className="btn btn--outline btn--sm">
-                <Upload size={14} /> Pilih Foto Baru
-              </label>
-              {uploading && (
-                <span className="upload-sub-text">
-                  <Loader size={12} className="spin" /> Mengunggah foto…
-                </span>
+              {formData.image_url && (
+                <button
+                  type="button"
+                  className="btn btn--outline btn--sm"
+                  onClick={() => setFormData((p) => ({ ...p, image_url: '' }))}
+                  title="Hapus URL"
+                >
+                  <X size={14} />
+                </button>
               )}
             </div>
           </div>
+
+          {formData.image_url && (
+            <div
+              style={{
+                position: 'relative',
+                marginTop: '16px',
+                maxHeight: '220px',
+                overflow: 'hidden',
+                borderRadius: '12px',
+                backgroundColor: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <img
+                key={formData.image_url}
+                src={formData.image_url}
+                alt="Foto menu"
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
+                style={{
+                  width: '100%',
+                  height: '220px',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                  if (e.target.nextElementSibling) {
+                    e.target.nextElementSibling.style.display = 'flex'
+                  }
+                }}
+              />
+              <div
+                style={{
+                  display: 'none',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '30px 16px',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  textAlign: 'center',
+                  background: '#f8fafc',
+                }}
+              >
+                <AlertCircle size={24} style={{ marginBottom: '8px', color: '#f59e0b' }} />
+                <span>Gambar tidak dapat dimuat langsung dari link ini (terproteksi atau URL tidak valid).</span>
+                <span style={{ fontSize: '11px', marginTop: '4px', color: '#94a3b8' }}>
+                  Namun link tetap akan tersimpan pada menu Anda.
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Basic Details */}

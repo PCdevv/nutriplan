@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   ArrowLeft,
-  Upload,
+  Link as LinkIcon,
   X,
   Plus,
   Loader,
@@ -11,7 +11,6 @@ import {
   Flame,
 } from 'lucide-react'
 import mealService from '../services/mealService'
-import uploadService from '../services/uploadService'
 import {
   saveDraft,
   loadDraft,
@@ -23,7 +22,7 @@ import {
 import ConfirmModal from '../components/modals/ConfirmModal'
 
 /**
- * AddMealPage — Create a new meal with image upload, nutrition facts, and draft persistence.
+ * AddMealPage — Create a new meal with image URL, nutrition facts, and draft persistence.
  */
 export default function AddMealPage({ onBack, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -35,10 +34,8 @@ export default function AddMealPage({ onBack, onSuccess }) {
     fat: 10,
     serving_size: '1 porsi (250g)',
     description: '',
+    image_url: '',
   })
-
-  const [imagePreview, setImagePreview] = useState(null)
-  const [uploadedImageUrl, setUploadedImageUrl] = useState('')
 
   // Ingredients list
   const [ingredients, setIngredients] = useState([
@@ -46,7 +43,6 @@ export default function AddMealPage({ onBack, onSuccess }) {
     { name: 'Sayuran / Pelengkap', quantity: 'Secukupnya' },
   ])
 
-  const [uploading, setUploading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
@@ -59,7 +55,6 @@ export default function AddMealPage({ onBack, onSuccess }) {
     const draftData = {
       formData,
       ingredients,
-      uploadedImageUrl: uploadedImageUrl || imagePreview,
     }
     const saved = saveDraft(draftData, 'create')
     if (saved) {
@@ -70,7 +65,7 @@ export default function AddMealPage({ onBack, onSuccess }) {
         setTimeout(() => setSuccessMsg(''), 3000)
       }
     }
-  }, [formData, ingredients, uploadedImageUrl, imagePreview])
+  }, [formData, ingredients])
 
   // Auto-save every 30s
   useEffect(() => {
@@ -85,10 +80,6 @@ export default function AddMealPage({ onBack, onSuccess }) {
     if (draft) {
       if (draft.formData) setFormData(draft.formData)
       if (draft.ingredients) setIngredients(draft.ingredients)
-      if (draft.uploadedImageUrl) {
-        setUploadedImageUrl(draft.uploadedImageUrl)
-        setImagePreview(draft.uploadedImageUrl)
-      }
       setShowDraftModal(false)
       setSuccessMsg('Draf berhasil dipulihkan.')
       setTimeout(() => setSuccessMsg(''), 3500)
@@ -101,40 +92,8 @@ export default function AddMealPage({ onBack, onSuccess }) {
     setDraftTimestamp(null)
   }
 
-  // File upload
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Ukuran gambar maksimal 5MB.')
-      return
-    }
-
-    setImageFile(file)
-    const localUrl = URL.createObjectURL(file)
-    setImagePreview(localUrl)
-    setError('')
-
-    // Auto-upload in background
-    try {
-      setUploading(true)
-      const res = await uploadService.uploadImage(file)
-      if (res.success && res.data?.url) {
-        setUploadedImageUrl(res.data.url)
-      }
-    } catch {
-      // Fallback preview
-      setUploadedImageUrl(localUrl)
-    } finally {
-      setUploading(false)
-    }
-  }
-
   const handleSelectPreset = (url) => {
-    setImageFile(null)
-    setImagePreview(url)
-    setUploadedImageUrl(url)
+    setFormData((prev) => ({ ...prev, image_url: url }))
     setError('')
   }
 
@@ -188,8 +147,7 @@ export default function AddMealPage({ onBack, onSuccess }) {
       serving_size: formData.serving_size.trim() || '1 porsi',
       description: formData.description.trim(),
       image_url:
-        uploadedImageUrl ||
-        imagePreview ||
+        formData.image_url.trim() ||
         'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
       ingredients: cleanIngredients,
     }
@@ -234,7 +192,7 @@ export default function AddMealPage({ onBack, onSuccess }) {
       <div className="form-title-group">
         <h1 className="display">Tambah Menu Baru</h1>
         <p className="lede">
-          Masukkan hidangan baru ke katalog nutrisi Anda beserta kandungan kalori dan makronya.
+          Masukkan hidangan baru ke katalog nutrisi Anda beserta link foto dan kandungan gizi.
         </p>
       </div>
 
@@ -251,102 +209,142 @@ export default function AddMealPage({ onBack, onSuccess }) {
       )}
 
       <form onSubmit={handleSubmit} className="entry-form">
-        {/* Photo Upload Section */}
+        {/* Photo URL Section */}
         <div className="card-box">
-          <h2 className="card-box-title">Foto Makanan</h2>
+          <h2 className="card-box-title">Link Foto Makanan</h2>
           <p className="card-box-desc">
-            Unggah foto sajian (maks 5MB) atau gunakan pilihan preset di bawah.
+            Masukkan tautan URL gambar sajian makanan langsung dari web atau pilih preset di bawah.
           </p>
 
-          <div className="meal-photo-uploader">
-            {imagePreview ? (
-              <div className="preview-image-wrap">
-                <img src={imagePreview} alt="Preview sajian" className="preview-img" />
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ color: '#64748b' }}><LinkIcon size={18} /></span>
+              <input
+                type="url"
+                name="image_url"
+                value={formData.image_url}
+                onChange={handleFormChange}
+                placeholder="https://images.unsplash.com/... atau URL gambar lainnya"
+                className="form-input"
+                style={{ flex: 1 }}
+              />
+              {formData.image_url && (
                 <button
                   type="button"
-                  className="preview-remove-btn"
-                  onClick={() => {
-                    setImageFile(null)
-                    setImagePreview(null)
-                    setUploadedImageUrl('')
-                  }}
-                  title="Hapus foto"
+                  className="btn btn--outline btn--sm"
+                  onClick={() => setFormData((prev) => ({ ...prev, image_url: '' }))}
+                  title="Hapus URL"
                 >
-                  <X size={18} />
+                  <X size={14} />
                 </button>
-              </div>
-            ) : (
-              <div className="upload-dropzone">
-                <input
-                  id="meal-photo-input"
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={handleImageChange}
-                  className="hidden-file-input"
-                />
-                <label htmlFor="meal-photo-input" className="upload-label">
-                  {uploading ? (
-                    <Loader size={36} className="spin text-primary" />
-                  ) : (
-                    <Upload size={36} className="upload-icon" />
-                  )}
-                  <span className="upload-main-text">
-                    {uploading ? 'Mengunggah foto…' : 'Pilih Foto dari Galeri'}
-                  </span>
-                  <span className="upload-sub-text">Mendukung format JPG, PNG, atau WebP</span>
-                </label>
-              </div>
-            )}
+              )}
+            </div>
+          </div>
 
-            {/* Presets */}
-            <div className="preset-selector">
-              <span className="preset-title">Atau gunakan foto preset:</span>
-              <div className="preset-pills">
-                <button
-                  type="button"
-                  className="pill"
-                  onClick={() =>
-                    handleSelectPreset(
-                      'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
-                    )
+          {/* Image Preview */}
+          {formData.image_url && (
+            <div
+              className="preview-image-wrap"
+              style={{
+                position: 'relative',
+                maxHeight: '220px',
+                overflow: 'hidden',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                backgroundColor: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <img
+                key={formData.image_url}
+                src={formData.image_url}
+                alt="Preview sajian"
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
+                className="preview-img"
+                style={{
+                  width: '100%',
+                  height: '220px',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                  if (e.target.nextElementSibling) {
+                    e.target.nextElementSibling.style.display = 'flex'
                   }
-                >
-                  🍛 Nasi Goreng
-                </button>
-                <button
-                  type="button"
-                  className="pill"
-                  onClick={() =>
-                    handleSelectPreset(
-                      'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80',
-                    )
-                  }
-                >
-                  🥗 Salad Segar
-                </button>
-                <button
-                  type="button"
-                  className="pill"
-                  onClick={() =>
-                    handleSelectPreset(
-                      'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=600&q=80',
-                    )
-                  }
-                >
-                  🍗 Ayam Panggang
-                </button>
-                <button
-                  type="button"
-                  className="pill"
-                  onClick={() =>
-                    handleSelectPreset(
-                      'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?auto=format&fit=crop&w=600&q=80',
-                    )
-                  }
-                >
-                  🥣 Oatmeal
-                </button>
+                }}
+              />
+              <div
+                style={{
+                  display: 'none',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '30px 16px',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  textAlign: 'center',
+                  background: '#f8fafc',
+                }}
+              >
+                <AlertCircle size={24} style={{ marginBottom: '8px', color: '#f59e0b' }} />
+                <span>Gambar tidak dapat dimuat langsung dari link ini (terproteksi atau URL tidak valid).</span>
+                <span style={{ fontSize: '11px', marginTop: '4px', color: '#94a3b8' }}>
+                  Namun link tetap akan tersimpan pada menu Anda.
+                </span>
               </div>
+            </div>
+          )}
+
+          {/* Presets */}
+          <div className="preset-selector">
+            <span className="preset-title">Atau gunakan foto preset pilihan:</span>
+            <div className="preset-pills">
+              <button
+                type="button"
+                className="pill"
+                onClick={() =>
+                  handleSelectPreset(
+                    'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
+                  )
+                }
+              >
+                🍛 Nasi Goreng
+              </button>
+              <button
+                type="button"
+                className="pill"
+                onClick={() =>
+                  handleSelectPreset(
+                    'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80',
+                  )
+                }
+              >
+                🥗 Salad Segar
+              </button>
+              <button
+                type="button"
+                className="pill"
+                onClick={() =>
+                  handleSelectPreset(
+                    'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=600&q=80',
+                  )
+                }
+              >
+                🍗 Ayam Panggang
+              </button>
+              <button
+                type="button"
+                className="pill"
+                onClick={() =>
+                  handleSelectPreset(
+                    'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?auto=format&fit=crop&w=600&q=80',
+                  )
+                }
+              >
+                🥣 Oatmeal
+              </button>
             </div>
           </div>
         </div>

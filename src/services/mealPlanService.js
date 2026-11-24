@@ -1,4 +1,4 @@
-import { apiClient, IS_SUPABASE } from '../config/api'
+import { apiClient } from '../config/api'
 import { normalizeMeal } from './mealService'
 import MEALS_FALLBACK from '../data/meals'
 
@@ -26,29 +26,25 @@ class MealPlanService {
    * Get meal plans for a given user on a specific date.
    */
   async getMealPlan(userId, dateStr) {
-    if (IS_SUPABASE) {
-      try {
-        const data = await apiClient.get(
-          `/rest/v1/meal_plans?user_id=eq.${userId}&date=eq.${dateStr}&select=id,user_id,date,meal_type,servings,created_at,meal_id,meals(*)`,
-        )
+    try {
+      const res = await apiClient.get(`/api/meal-plans?user_id=${userId}&date=${dateStr}`)
 
-        const list = Array.isArray(data)
-          ? data.map((item) => ({
-              id: item.id,
-              user_id: item.user_id,
-              date: item.date,
-              meal_type: item.meal_type,
-              servings: Number(item.servings || 1),
-              created_at: item.created_at,
-              meal_id: item.meal_id,
-              meal: item.meals ? normalizeMeal(item.meals) : null,
-            }))
-          : []
+      const list = Array.isArray(res.data)
+        ? res.data.map((item) => ({
+            id: item.id,
+            user_id: item.user_id,
+            date: item.date,
+            meal_type: item.meal_type,
+            servings: Number(item.servings || 1),
+            created_at: item.created_at,
+            meal_id: item.meal_id,
+            meal: item.meals ? normalizeMeal(item.meals) : null,
+          }))
+        : []
 
-        return { success: true, data: list }
-      } catch (err) {
-        console.warn('[mealPlanService] Supabase getMealPlan failed, using offline cache:', err.message)
-      }
+      return { success: true, data: list }
+    } catch (err) {
+      console.warn('[mealPlanService] API getMealPlan failed, using offline cache:', err.message)
     }
 
     // Offline fallback
@@ -97,22 +93,17 @@ class MealPlanService {
     offlinePlans.push(offlineItem)
     saveOfflinePlans(offlinePlans)
 
-    if (IS_SUPABASE) {
-      try {
-        const res = await apiClient.post('/rest/v1/meal_plans', payload, {
-          headers: { Prefer: 'return=representation' },
-        })
-        const created = Array.isArray(res) ? res[0] : res
-        return {
-          success: true,
-          data: {
-            ...created,
-            meal: data.meal ? normalizeMeal(data.meal) : null,
-          },
-        }
-      } catch (err) {
-        console.warn('[mealPlanService] Supabase add failed, saved locally:', err.message)
+    try {
+      const res = await apiClient.post('/api/meal-plans', payload)
+      return {
+        success: true,
+        data: {
+          ...res.data,
+          meal: data.meal ? normalizeMeal(data.meal) : null,
+        },
       }
+    } catch (err) {
+      console.warn('[mealPlanService] API add failed, saved locally:', err.message)
     }
 
     return { success: true, data: offlineItem }
@@ -126,12 +117,12 @@ class MealPlanService {
     const offlinePlans = getOfflinePlans().filter((p) => String(p.id) !== String(planId))
     saveOfflinePlans(offlinePlans)
 
-    if (IS_SUPABASE && !String(planId).startsWith('local-plan-')) {
+    if (!String(planId).startsWith('local-plan-')) {
       try {
-        await apiClient.delete(`/rest/v1/meal_plans?id=eq.${planId}`)
+        await apiClient.delete(`/api/meal-plans/${planId}`)
         return { success: true }
       } catch (err) {
-        console.warn('[mealPlanService] Supabase delete failed:', err.message)
+        console.warn('[mealPlanService] API delete failed:', err.message)
       }
     }
 
@@ -148,13 +139,9 @@ class MealPlanService {
     )
     saveOfflinePlans(offlinePlans)
 
-    if (IS_SUPABASE && !String(planId).startsWith('local-plan-')) {
+    if (!String(planId).startsWith('local-plan-')) {
       try {
-        await apiClient.patch(
-          `/rest/v1/meal_plans?id=eq.${planId}`,
-          { servings: val },
-          { headers: { Prefer: 'return=representation' } },
-        )
+        await apiClient.patch(`/api/meal-plans/${planId}`, { servings: val })
       } catch (err) {
         console.warn('[mealPlanService] updateServings failed:', err.message)
       }

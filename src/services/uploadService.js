@@ -1,10 +1,10 @@
 import axios from 'axios'
-import { BASE_URL, SUPABASE_KEY, IS_SUPABASE } from '../config/api'
+import { API_BASE } from '../config/api'
 
 // ---------------------------------------------------------------------------
 // UploadService — image upload for meals.
-// Supports Supabase Storage (/storage/v1/object/:bucket/:file)
-// with automatic client-side Base64 Data URL fallback.
+// Uploads via Express API endpoint /api/upload with automatic
+// client-side Base64 Data URL fallback.
 // ---------------------------------------------------------------------------
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
@@ -27,31 +27,24 @@ class UploadService {
       throw new Error('Ukuran file maksimal 5 MB.')
     }
 
-    // --- Supabase Storage flow ---
-    if (IS_SUPABASE) {
-      const ext = file.name.split('.').pop() || 'png'
-      const fileName = `meal_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`
-      const bucketName = 'meals'
+    // --- Upload via Express API ---
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
 
-      try {
-        const uploadUrl = `${BASE_URL}/storage/v1/object/${bucketName}/${fileName}`
-        await axios.post(uploadUrl, file, {
-          headers: {
-            'Content-Type': file.type,
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-          },
-          timeout: 30000,
-        })
+      const response = await axios.post(`${API_BASE}/api/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 30000,
+      })
 
-        const publicUrl = `${BASE_URL}/storage/v1/object/public/${bucketName}/${fileName}`
-        return {
-          success: true,
-          data: { url: publicUrl, filename: fileName },
-        }
-      } catch (err) {
-        console.warn('[uploadService] Supabase bucket not accessible, using Base64 Data URL fallback:', err.message)
+      return {
+        success: true,
+        data: { url: response.data.data.url, filename: response.data.data.filename },
       }
+    } catch (err) {
+      console.warn('[uploadService] API upload failed, using Base64 Data URL fallback:', err.message)
     }
 
     // Client-side fallback to base64 Data URL so user can always see & save their photo

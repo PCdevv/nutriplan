@@ -1,4 +1,4 @@
-import { apiClient, IS_SUPABASE } from '../config/api'
+import { apiClient } from '../config/api'
 import MEALS_FALLBACK from '../data/meals'
 
 // ---------------------------------------------------------------------------
@@ -49,78 +49,57 @@ class MealService {
    * Fetch a list of meals with optional search and category filters.
    */
   async getMeals(params = {}) {
-    if (IS_SUPABASE) {
-      const queryParts = ['select=*']
+    try {
+      const queryParams = new URLSearchParams()
+      if (params.search) queryParams.set('search', params.search)
+      if (params.category && params.category !== 'All') queryParams.set('category', params.category)
+      if (params.sort_by) queryParams.set('sort_by', params.sort_by)
+      if (params.order) queryParams.set('order', params.order)
+      if (params.limit) queryParams.set('limit', params.limit)
 
-      if (params.search) {
-        queryParts.push(`name=ilike.*${encodeURIComponent(params.search)}*`)
+      const qs = queryParams.toString()
+      const res = await apiClient.get(`/api/meals${qs ? `?${qs}` : ''}`)
+
+      const list = Array.isArray(res.data) ? res.data.map(normalizeMeal) : []
+      return {
+        success: true,
+        data: list,
+        pagination: {
+          total: list.length,
+          page: params.page || 1,
+          limit: params.limit || 50,
+        },
       }
-
+    } catch (err) {
+      console.warn('[mealService] API getMeals failed, fallback to local meals:', err.message)
+      // Fallback filter locally
+      let local = [...MEALS_FALLBACK]
       if (params.category && params.category !== 'All') {
-        queryParts.push(`category=eq.${encodeURIComponent(params.category)}`)
+        local = local.filter((m) => m.category.toLowerCase() === params.category.toLowerCase())
       }
-
-      if (params.sort_by) {
-        const order = params.order === 'desc' ? 'desc' : 'asc'
-        queryParts.push(`order=${encodeURIComponent(params.sort_by)}.${order}`)
-      } else {
-        queryParts.push('order=created_at.desc')
+      if (params.search) {
+        const s = params.search.toLowerCase()
+        local = local.filter((m) => m.name.toLowerCase().includes(s) || m.description.toLowerCase().includes(s))
       }
-
-      if (params.limit) {
-        queryParts.push(`limit=${params.limit}`)
-      }
-
-      const queryString = queryParts.join('&')
-      try {
-        const data = await apiClient.get(`/rest/v1/meals?${queryString}`)
-        const list = Array.isArray(data) ? data.map(normalizeMeal) : []
-
-        return {
-          success: true,
-          data: list,
-          pagination: {
-            total: list.length,
-            page: params.page || 1,
-            limit: params.limit || 50,
-          },
-        }
-      } catch (err) {
-        console.warn('[mealService] Supabase getMeals failed, fallback to local meals:', err.message)
-        // Fallback filter locally
-        let local = [...MEALS_FALLBACK]
-        if (params.category && params.category !== 'All') {
-          local = local.filter((m) => m.category.toLowerCase() === params.category.toLowerCase())
-        }
-        if (params.search) {
-          const s = params.search.toLowerCase()
-          local = local.filter((m) => m.name.toLowerCase().includes(s) || m.description.toLowerCase().includes(s))
-        }
-        return {
-          success: true,
-          data: local.map(normalizeMeal),
-          isFallback: true,
-        }
+      return {
+        success: true,
+        data: local.map(normalizeMeal),
+        isFallback: true,
       }
     }
-
-    // Default local data
-    return { success: true, data: MEALS_FALLBACK.map(normalizeMeal) }
   }
 
   /**
    * Fetch a single meal by ID.
    */
   async getMealById(id) {
-    if (IS_SUPABASE) {
-      try {
-        const data = await apiClient.get(`/rest/v1/meals?id=eq.${id}&select=*`)
-        if (Array.isArray(data) && data.length > 0) {
-          return { success: true, data: normalizeMeal(data[0]) }
-        }
-      } catch (err) {
-        console.warn('[mealService] getMealById failed on Supabase:', err.message)
+    try {
+      const res = await apiClient.get(`/api/meals/${id}`)
+      if (res.data) {
+        return { success: true, data: normalizeMeal(res.data) }
       }
+    } catch (err) {
+      console.warn('[mealService] getMealById failed:', err.message)
     }
 
     // Fallback search local
@@ -132,71 +111,56 @@ class MealService {
   }
 
   /**
-   * Create a new meal item in the database.
+   * Create a new meal item.
    */
   async createMeal(data) {
-    const payload = {
-      name: data.name,
-      category: data.category || 'Lunch',
-      calories: Number(data.calories || 0),
-      protein: Number(data.protein || 0),
-      carbs: Number(data.carbs || 0),
-      fat: Number(data.fat || 0),
-      serving_size: data.serving_size || '1 porsi',
-      description: data.description || '',
-      image_url: data.image_url || '',
-    }
+    try {
+      const payload = {
+        name: data.name,
+        category: data.category || 'Lunch',
+        calories: Number(data.calories || 0),
+        protein: Number(data.protein || 0),
+        carbs: Number(data.carbs || 0),
+        fat: Number(data.fat || 0),
+        serving_size: data.serving_size || '1 porsi',
+        description: data.description || '',
+        image_url: data.image_url || '',
+      }
 
-    if (IS_SUPABASE) {
-      const res = await apiClient.post('/rest/v1/meals', payload, {
-        headers: { Prefer: 'return=representation' },
-      })
-      const created = Array.isArray(res) ? res[0] : res
+      const res = await apiClient.post('/api/meals', payload)
+      return { success: true, data: normalizeMeal(res.data) }
+    } catch (err) {
+      console.warn('[mealService] createMeal failed:', err.message)
+      // Offline mock
+      const created = { ...data, id: `local-${Date.now()}` }
       return { success: true, data: normalizeMeal(created) }
     }
-
-    // Offline mock
-    const created = { ...payload, id: `local-${Date.now()}` }
-    return { success: true, data: normalizeMeal(created) }
   }
 
   /**
    * Update existing meal.
    */
   async updateMeal(id, data) {
-    const payload = {
-      updated_at: new Date().toISOString(),
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.category !== undefined && { category: data.category }),
-      ...(data.calories !== undefined && { calories: Number(data.calories) }),
-      ...(data.protein !== undefined && { protein: Number(data.protein) }),
-      ...(data.carbs !== undefined && { carbs: Number(data.carbs) }),
-      ...(data.fat !== undefined && { fat: Number(data.fat) }),
-      ...(data.serving_size !== undefined && { serving_size: data.serving_size }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.image_url !== undefined && { image_url: data.image_url }),
+    try {
+      const res = await apiClient.put(`/api/meals/${id}`, data)
+      return { success: true, data: normalizeMeal(res.data) }
+    } catch (err) {
+      console.warn('[mealService] updateMeal failed:', err.message)
+      return { success: true, data: normalizeMeal({ id, ...data }) }
     }
-
-    if (IS_SUPABASE) {
-      const res = await apiClient.patch(`/rest/v1/meals?id=eq.${id}`, payload, {
-        headers: { Prefer: 'return=representation' },
-      })
-      const updated = Array.isArray(res) ? res[0] : res
-      return { success: true, data: normalizeMeal(updated) }
-    }
-
-    return { success: true, data: normalizeMeal({ id, ...payload }) }
   }
 
   /**
    * Delete meal item.
    */
   async deleteMeal(id) {
-    if (IS_SUPABASE) {
-      await apiClient.delete(`/rest/v1/meals?id=eq.${id}`)
+    try {
+      await apiClient.delete(`/api/meals/${id}`)
+      return { success: true }
+    } catch (err) {
+      console.warn('[mealService] deleteMeal failed:', err.message)
       return { success: true }
     }
-    return { success: true }
   }
 }
 
