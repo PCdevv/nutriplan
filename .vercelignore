@@ -2,3 +2,7 @@ dev-dist
 nutriplan.sql
 README.md
 api/server.js
+api/config/**
+api/models/**
+api/controllers/**
+api/routes/**
