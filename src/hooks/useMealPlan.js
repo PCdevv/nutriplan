@@ -94,6 +94,30 @@ export function useMealPlan(initialDate = getTodayDateString()) {
     return false
   }
 
+  // Duplicate meal plans from sourceDate to targetDate
+  const duplicateMealPlan = async (sourceDate, targetDate, replace = false) => {
+    try {
+      setError(null)
+      const res = await mealPlanService.duplicateMealPlan({
+        user_id: userIdentifier,
+        source_date: sourceDate,
+        target_date: targetDate,
+        replace,
+      })
+      if (res.success) {
+        if (targetDate === selectedDate) {
+          await fetchPlan()
+        }
+        return { success: true, data: res.data, message: res.message }
+      }
+      return { success: false, message: res.message || 'Gagal menduplikasi meal plan.' }
+    } catch (err) {
+      const msg = err.message || 'Gagal menduplikasi meal plan.'
+      setError(msg)
+      return { success: false, message: msg }
+    }
+  }
+
   return {
     selectedDate,
     setSelectedDate,
@@ -106,5 +130,6 @@ export function useMealPlan(initialDate = getTodayDateString()) {
     addMealToPlan,
     removeFromPlan,
     updateServings,
+    duplicateMealPlan,
   }
 }

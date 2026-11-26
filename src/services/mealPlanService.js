@@ -149,6 +149,50 @@ class MealPlanService {
 
     return { success: true }
   }
+
+  /**
+   * Duplicate meal plans from source_date to target_date.
+   * @param {Object} data { user_id, source_date, target_date, replace }
+   */
+  async duplicateMealPlan(data) {
+    const payload = {
+      user_id: data.user_id,
+      source_date: data.source_date,
+      target_date: data.target_date,
+      replace: Boolean(data.replace),
+    }
+
+    try {
+      const res = await apiClient.post('/api/meal-plans/duplicate', payload)
+      return { success: true, data: res.data, message: res.message }
+    } catch (err) {
+      console.warn('[mealPlanService] API duplicateMealPlan failed, using offline cache:', err.message)
+    }
+
+    // Offline fallback
+    let offlinePlans = getOfflinePlans()
+    const sourceItems = offlinePlans.filter(
+      (p) => String(p.user_id) === String(payload.user_id) && p.date === payload.source_date,
+    )
+
+    if (payload.replace) {
+      offlinePlans = offlinePlans.filter(
+        (p) => !(String(p.user_id) === String(payload.user_id) && p.date === payload.target_date),
+      )
+    }
+
+    const now = new Date().toISOString()
+    const duplicatedItems = sourceItems.map((item) => ({
+      ...item,
+      id: `local-plan-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      date: payload.target_date,
+      created_at: now,
+    }))
+
+    saveOfflinePlans([...offlinePlans, ...duplicatedItems])
+
+    return { success: true, data: duplicatedItems, isOffline: true }
+  }
 }
 
 export default new MealPlanService()

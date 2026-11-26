@@ -10,6 +10,8 @@ import {
     Cookie,
     AlertCircle,
     Loader,
+    Copy,
+    CheckCircle2,
 } from "lucide-react";
 import CalorieRing from "../components/meal/CalorieRing";
 import MacroBar from "../components/meal/MacroBar";
@@ -35,9 +37,15 @@ export default function MealPlanPage({ mealPlanState, onNavigateToCatalog }) {
         refetch,
         removeFromPlan,
         updateServings,
+        duplicateMealPlan,
     } = mealPlanState;
 
     const [profile] = useState(() => getUserProfile());
+    const [showDuplicateForm, setShowDuplicateForm] = useState(false);
+    const [targetDate, setTargetDate] = useState(() => getTodayDateString());
+    const [replaceExisting, setReplaceExisting] = useState(false);
+    const [duplicating, setDuplicating] = useState(false);
+    const [duplicateNotice, setDuplicateNotice] = useState(null);
 
     // Date navigation helpers
     const handleShiftDate = (days) => {
@@ -51,6 +59,34 @@ export default function MealPlanPage({ mealPlanState, onNavigateToCatalog }) {
 
     const handleResetToday = () => {
         setSelectedDate(getTodayDateString());
+    };
+
+    const handleDuplicatePlan = async (e) => {
+        e.preventDefault();
+        if (!targetDate || targetDate === selectedDate) return;
+
+        setDuplicating(true);
+        setDuplicateNotice(null);
+        const res = await duplicateMealPlan(
+            selectedDate,
+            targetDate,
+            replaceExisting,
+        );
+        setDuplicating(false);
+
+        if (res.success) {
+            setDuplicateNotice({
+                type: "success",
+                text: `Menu berhasil diduplikasi ke ${formatPlanDate(targetDate)}.`,
+                targetDate,
+            });
+            setShowDuplicateForm(false);
+        } else {
+            setDuplicateNotice({
+                type: "error",
+                text: res.message || "Gagal menduplikasi menu.",
+            });
+        }
     };
 
     const sections = [
@@ -102,7 +138,7 @@ export default function MealPlanPage({ mealPlanState, onNavigateToCatalog }) {
                     <span className="date-nav-label">
                         {formatPlanDate(selectedDate)}
                     </span>
-                    {selectedDate !== getTodayDateString() && (
+                    {selectedDate == getTodayDateString() && (
                         <button
                             type="button"
                             className="today-pill"
@@ -123,7 +159,123 @@ export default function MealPlanPage({ mealPlanState, onNavigateToCatalog }) {
                 </button>
             </div>
 
+            {/* Duplicate Meal Plan Bar (hidden when selectedDate is today) */}
+            {selectedDate !== getTodayDateString() && (
+                <div className="duplicate-plan-box">
+                    <div className="duplicate-plan-header">
+                        <div className="duplicate-plan-info">
+                            <Copy size={16} className="text-primary" />
+                            <span>
+                                Salin menu dari{" "}
+                                <strong>{formatPlanDate(selectedDate)}</strong>
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn--outline btn--sm"
+                            onClick={() => {
+                                setShowDuplicateForm((prev) => !prev);
+                                setDuplicateNotice(null);
+                            }}
+                        >
+                            {showDuplicateForm ? "Batal" : "Duplikat Menu"}
+                        </button>
+                    </div>
+
+                    {showDuplicateForm && (
+                        <form
+                            className="duplicate-plan-form"
+                            onSubmit={handleDuplicatePlan}
+                        >
+                            <div className="duplicate-plan-fields">
+                                <label className="duplicate-field">
+                                    <span>Tanggal Tujuan</span>
+                                    <input
+                                        type="date"
+                                        value={targetDate}
+                                        onChange={(e) =>
+                                            setTargetDate(e.target.value)
+                                        }
+                                        required
+                                    />
+                                </label>
+
+                                <label className="duplicate-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={replaceExisting}
+                                        onChange={(e) =>
+                                            setReplaceExisting(e.target.checked)
+                                        }
+                                    />
+                                    <span>
+                                        Ganti menu yang sudah ada di tanggal
+                                        tujuan
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div className="duplicate-plan-actions">
+                                <button
+                                    type="submit"
+                                    className="btn btn--primary btn--sm"
+                                    disabled={
+                                        duplicating ||
+                                        !targetDate ||
+                                        targetDate === selectedDate
+                                    }
+                                >
+                                    {duplicating ? (
+                                        <>
+                                            <Loader
+                                                size={14}
+                                                className="spin"
+                                            />{" "}
+                                            Menduplikasi...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy size={14} /> Duplikat Sekarang
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            )}
+
             {/* Notifications */}
+            {duplicateNotice && (
+                <div
+                    className={`toast ${
+                        duplicateNotice.type === "success"
+                            ? "toast--success"
+                            : "toast--error"
+                    }`}
+                >
+                    {duplicateNotice.type === "success" ? (
+                        <CheckCircle2 size={18} />
+                    ) : (
+                        <AlertCircle size={18} />
+                    )}
+                    <span>{duplicateNotice.text}</span>
+                    {duplicateNotice.type === "success" &&
+                        duplicateNotice.targetDate && (
+                            <button
+                                type="button"
+                                className="btn btn--outline btn--sm"
+                                onClick={() => {
+                                    setSelectedDate(duplicateNotice.targetDate);
+                                    setDuplicateNotice(null);
+                                }}
+                            >
+                                Lihat
+                            </button>
+                        )}
+                </div>
+            )}
+
             {error && (
                 <div className="toast toast--error">
                     <AlertCircle size={18} /> {error}
