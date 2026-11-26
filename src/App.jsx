@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import BottomNav from './components/BottomNav.jsx'
+import HomePage from './pages/HomePage.jsx'
 import MealPlanPage from './pages/MealPlanPage.jsx'
 import FoodCatalog from './pages/FoodCatalog.jsx'
 import FavoritesPage from './pages/FavoritesPage.jsx'
@@ -15,7 +16,7 @@ import './App.css'
 
 function App() {
   const [showSplash, setShowSplash] = useState(true)
-  const [tab, setTab] = useState('Planner') // 'Planner' | 'Foods' | 'Favorites' | 'Profile' | 'About'
+  const [tab, setTab] = useState('Home') // 'Home' | 'Planner' | 'Foods' | 'Favorites' | 'Profile' | 'About'
   const [mode, setMode] = useState('list') // 'list' | 'create' | 'edit' | 'detail'
   const [selectedMeal, setSelectedMeal] = useState(null)
   const [editingMeal, setEditingMeal] = useState(null)
@@ -80,7 +81,7 @@ function App() {
         <button
           type="button"
           className="top-brand"
-          onClick={() => handleNavigate('Planner')}
+          onClick={() => handleNavigate('Home')}
         >
           <div className="top-logo-badge">
             <img src="/logo.png" alt="NutriPlan Logo" />
@@ -147,6 +148,15 @@ function App() {
         {/* Top-level Tabs */}
         {mode === 'list' && (
           <>
+            {tab === 'Home' && (
+              <HomePage
+                mealPlanState={mealPlanState}
+                onNavigate={handleNavigate}
+                onNavigateToCatalog={handlePlannerGoToCatalog}
+                onAddToPlan={handleAddToPlan}
+              />
+            )}
+
             {tab === 'Planner' && (
               <MealPlanPage
                 mealPlanState={mealPlanState}

@@ -1,11 +1,11 @@
-import { CalendarDays, UtensilsCrossed, Heart, User } from 'lucide-react'
+import { Home, CalendarDays, UtensilsCrossed, Heart, User } from 'lucide-react'
 import { useFavorites } from '../hooks/useFavorites'
 
 /**
  * BottomNav — Fixed modern bottom navigation bar for mobile PWA experience.
  *
  * @param {Object} props
- * @param {string} props.activeTab - 'Planner' | 'Foods' | 'Favorites' | 'Profile'
+ * @param {string} props.activeTab - 'Home' | 'Planner' | 'Foods' | 'Favorites' | 'Profile'
  * @param {Function} props.onTabChange - (tabId) => void
  */
 export default function BottomNav({ activeTab, onTabChange }) {
@@ -13,6 +13,7 @@ export default function BottomNav({ activeTab, onTabChange }) {
   const favCount = favorites ? favorites.length : 0
 
   const navItems = [
+    { id: 'Home', label: 'Home', icon: Home },
     { id: 'Planner', label: 'Planner', icon: CalendarDays },
     { id: 'Foods', label: 'Katalog', icon: UtensilsCrossed },
     { id: 'Favorites', label: 'Favorit', icon: Heart, badge: favCount },
